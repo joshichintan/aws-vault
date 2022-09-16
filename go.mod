@@ -25,6 +25,9 @@ require (
 	gopkg.in/ini.v1 v1.67.0
 )
 
+// TODO: remove this once the keyring PR is merged upstream
+replace github.com/99designs/keyring => github.com/milesbxf/keyring milesbxf-touchid-support
+
 require (
 	github.com/1Password/connect-sdk-go v1.5.4-0.20250417152128-c154b387248b // indirect
 	github.com/1password/onepassword-sdk-go v0.3.2-0.20250818130116-54fb7ee8021b // indirect
