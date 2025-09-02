@@ -26,7 +26,7 @@ require (
 )
 
 // TODO: remove this once the keyring PR is merged upstream
-replace github.com/99designs/keyring => github.com/milesbxf/keyring v0.0.0-20220916120441-35a1afea02b0
+replace github.com/byteness/keyring => github.com/kennethwkz-mm/keyring v1.3.5-0.20250902093321-78c9afacce36
 
 require (
 	github.com/1Password/connect-sdk-go v1.5.4-0.20250417152128-c154b387248b // indirect
