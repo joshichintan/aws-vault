@@ -2,6 +2,8 @@ module github.com/byteness/aws-vault/v7
 
 go 1.24.0
 
+toolchain go1.24.7
+
 require (
 	github.com/AlecAivazis/survey/v2 v2.3.7
 	github.com/alecthomas/kingpin/v2 v2.4.0
