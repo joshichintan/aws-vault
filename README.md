@@ -34,6 +34,8 @@ The supported vaulting backends are:
 * [KWallet](https://kde.org/applications/system/org.kde.kwalletmanager5)
 * [Pass](https://www.passwordstore.org/)
 * Encrypted file
+* [1Password Connect](https://developer.1password.com/docs/connect/)
+* [1Password Service Accounts](https://developer.1password.com/docs/service-accounts)
 
 Use the `--backend` flag or `AWS_VAULT_BACKEND` environment variable to specify.
 

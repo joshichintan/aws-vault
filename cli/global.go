@@ -26,6 +26,8 @@ var keyringConfigDefaults = keyring.Config{
 	KWalletFolder:            "aws-vault",
 	KeychainTrustApplication: true,
 	WinCredPrefix:            "aws-vault",
+	OPConnectTokenFunc:       opConnectKeyringTokenPrompt,
+	OPTokenFunc:              opKeyringTokenPrompt,
 }
 
 type AwsVault struct {
@@ -165,6 +167,29 @@ func ConfigureGlobals(app *kingpin.Application) *AwsVault {
 		Envar("AWS_VAULT_FILE_DIR").
 		StringVar(&a.KeyringConfig.FileDir)
 
+	app.Flag("op-timeout", "Timeout for 1Password API operations (1Password Service Accounts only)").
+		Default("15s").
+		Envar("AWS_VAULT_OP_TIMEOUT").
+		DurationVar(&a.KeyringConfig.OPTimeout)
+
+	app.Flag("op-vault-id", "UUID of the 1Password vault").
+		Envar("AWS_VAULT_OP_VAULT_ID").
+		StringVar(&a.KeyringConfig.OPVaultID)
+
+	app.Flag("op-item-title-prefix", "Prefix to prepend to 1Password item titles").
+		Default("aws-vault").
+		Envar("AWS_VAULT_OP_ITEM_TITLE_PREFIX").
+		StringVar(&a.KeyringConfig.OPItemTitlePrefix)
+
+	app.Flag("op-item-tag", "Tag to apply to 1Password items").
+		Default("aws-vault").
+		Envar("AWS_VAULT_OP_ITEM_TAG").
+		StringVar(&a.KeyringConfig.OPItemTag)
+
+	app.Flag("op-connect-host", "1Password Connect server HTTP(S) URI").
+		Envar("AWS_VAULT_OP_CONNECT_HOST").
+		StringVar(&a.KeyringConfig.OPConnectHost)
+
 	app.PreAction(func(c *kingpin.ParseContext) error {
 		if !a.Debug {
 			log.SetOutput(io.Discard)
@@ -178,7 +203,19 @@ func ConfigureGlobals(app *kingpin.Application) *AwsVault {
 }
 
 func fileKeyringPassphrasePrompt(prompt string) (string, error) {
-	if password, ok := os.LookupEnv("AWS_VAULT_FILE_PASSPHRASE"); ok {
+	return keyringPassphrasePrompt(prompt, "AWS_VAULT_FILE_PASSPHRASE")
+}
+
+func opConnectKeyringTokenPrompt(prompt string) (string, error) {
+	return keyringPassphrasePrompt(prompt, "AWS_VAULT_OP_CONNECT_TOKEN")
+}
+
+func opKeyringTokenPrompt(prompt string) (string, error) {
+	return keyringPassphrasePrompt(prompt, "AWS_VAULT_OP_SERVICE_ACCOUNT_TOKEN")
+}
+
+func keyringPassphrasePrompt(prompt string, env string) (string, error) {
+	if password, ok := os.LookupEnv(env); ok {
 		return password, nil
 	}
 
