@@ -285,6 +285,8 @@ To configure the default flag values of `aws-vault` and its subcommands:
 * `AWS_VAULT_OP_ITEM_TITLE_PREFIX`: Prefix to prepend to 1Password item titles (see the flag `--op-item-title-prefix`)
 * `AWS_VAULT_OP_ITEM_TAG`: Tag to apply to 1Password items (see the flag `--op-item-tag`)
 * `AWS_VAULT_OP_CONNECT_HOST`: 1Password Connect server HTTP(S) URI (see the flag `--op-connect-host`)
+* `AWS_VAULT_OP_CONNECT_TOKEN`: 1Password Connect server access token
+* `AWS_VAULT_OP_SERVICE_ACCOUNT_TOKEN`: 1Password service account token
 * `AWS_CONFIG_FILE`: The location of the AWS config file
 
 To override the AWS config file (used in the `exec`, `login` and `rotate` subcommands):
