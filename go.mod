@@ -13,7 +13,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/iam v1.47.7
 	github.com/aws/aws-sdk-go-v2/service/sso v1.29.3
 	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.34.5
-	github.com/aws/aws-sdk-go-v2/service/sts v1.38.4
+	github.com/aws/aws-sdk-go-v2/service/sts v1.38.6
 	github.com/byteness/keyring v1.4.3
 	github.com/charmbracelet/huh v0.7.0
 	github.com/charmbracelet/lipgloss v1.1.0
@@ -35,7 +35,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.7.9 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/ini v1.8.3 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.13.1 // indirect
-	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.13.7 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.13.9 // indirect
 	github.com/aws/smithy-go v1.23.0 // indirect
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
 	github.com/byteness/go-keychain v0.0.0-20191008050251-8e49817e8af4 // indirect
