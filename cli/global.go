@@ -18,6 +18,11 @@ import (
 	"golang.org/x/term"
 )
 
+const (
+	opConnectTokenEnv = "AWS_VAULT_OP_CONNECT_TOKEN"
+	opTokenEnv = "AWS_VAULT_OP_SERVICE_ACCOUNT_TOKEN"
+)
+
 var keyringConfigDefaults = keyring.Config{
 	ServiceName:              "aws-vault",
 	FilePasswordFunc:         fileKeyringPassphrasePrompt,
@@ -26,7 +31,9 @@ var keyringConfigDefaults = keyring.Config{
 	KWalletFolder:            "aws-vault",
 	KeychainTrustApplication: true,
 	WinCredPrefix:            "aws-vault",
+	OPConnectTokenEnv:        opConnectTokenEnv,
 	OPConnectTokenFunc:       opConnectKeyringTokenPrompt,
+	OPTokenEnv:               opTokenEnv,
 	OPTokenFunc:              opKeyringTokenPrompt,
 }
 
@@ -207,11 +214,11 @@ func fileKeyringPassphrasePrompt(prompt string) (string, error) {
 }
 
 func opConnectKeyringTokenPrompt(prompt string) (string, error) {
-	return keyringPassphrasePrompt(prompt, "AWS_VAULT_OP_CONNECT_TOKEN")
+	return keyringPassphrasePrompt(prompt, opConnectTokenEnv)
 }
 
 func opKeyringTokenPrompt(prompt string) (string, error) {
-	return keyringPassphrasePrompt(prompt, "AWS_VAULT_OP_SERVICE_ACCOUNT_TOKEN")
+	return keyringPassphrasePrompt(prompt, opTokenEnv)
 }
 
 func keyringPassphrasePrompt(prompt string, env string) (string, error) {
