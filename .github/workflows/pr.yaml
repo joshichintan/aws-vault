@@ -7,6 +7,7 @@ on:
 permissions:
   contents: read  # This is required for the label PR action
   pull-requests: write # This is required for the label PR action
+  issues: write # Required to create new labels
 
 jobs:
   validate-pr-title:
@@ -26,7 +27,7 @@ jobs:
         uses: webiny/action-conventional-commits@8bc41ff4e7d423d56fa4905f6ff79209a78776c7 # v1.3.0
         with:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          allowed-commit-types: "feat,fix,docs,chore,ci,test,refactor,perf,revert,changelog"
+          allowed-commit-types: "feat,fix,docs,chore,ci,test,refactor,perf,revert,changelog,build,style,merge"
   labeler:
     name: Label PRs
     runs-on: ubuntu-latest
