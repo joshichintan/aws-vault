@@ -18,11 +18,6 @@ import (
 	"golang.org/x/term"
 )
 
-const (
-	opConnectTokenEnv = "AWS_VAULT_OP_CONNECT_TOKEN"
-	opTokenEnv = "AWS_VAULT_OP_SERVICE_ACCOUNT_TOKEN"
-)
-
 var keyringConfigDefaults = keyring.Config{
 	ServiceName:              "aws-vault",
 	FilePasswordFunc:         fileKeyringPassphrasePrompt,
@@ -31,10 +26,10 @@ var keyringConfigDefaults = keyring.Config{
 	KWalletFolder:            "aws-vault",
 	KeychainTrustApplication: true,
 	WinCredPrefix:            "aws-vault",
-	OPConnectTokenEnv:        opConnectTokenEnv,
-	OPConnectTokenFunc:       opConnectKeyringTokenPrompt,
-	OPTokenEnv:               opTokenEnv,
-	OPTokenFunc:              opKeyringTokenPrompt,
+	OPConnectTokenEnv:        "AWS_VAULT_OP_CONNECT_TOKEN",
+	OPConnectTokenFunc:       keyringPassphrasePrompt,
+	OPTokenEnv:               "AWS_VAULT_OP_SERVICE_ACCOUNT_TOKEN",
+	OPTokenFunc:              keyringPassphrasePrompt,
 }
 
 type AwsVault struct {
@@ -210,22 +205,14 @@ func ConfigureGlobals(app *kingpin.Application) *AwsVault {
 }
 
 func fileKeyringPassphrasePrompt(prompt string) (string, error) {
-	return keyringPassphrasePrompt(prompt, "AWS_VAULT_FILE_PASSPHRASE")
-}
-
-func opConnectKeyringTokenPrompt(prompt string) (string, error) {
-	return keyringPassphrasePrompt(prompt, opConnectTokenEnv)
-}
-
-func opKeyringTokenPrompt(prompt string) (string, error) {
-	return keyringPassphrasePrompt(prompt, opTokenEnv)
-}
-
-func keyringPassphrasePrompt(prompt string, env string) (string, error) {
-	if password, ok := os.LookupEnv(env); ok {
+	if password, ok := os.LookupEnv("AWS_VAULT_FILE_PASSPHRASE"); ok {
 		return password, nil
 	}
 
+	return keyringPassphrasePrompt(prompt)
+}
+
+func keyringPassphrasePrompt(prompt string) (string, error) {
 	fmt.Fprintf(os.Stderr, "%s: ", prompt)
 	b, err := term.ReadPassword(int(os.Stdin.Fd()))
 	if err != nil {
