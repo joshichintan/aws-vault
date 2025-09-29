@@ -1,8 +1,8 @@
 name: PR checks
 
 on:
-  #pull_request:
-  #  types: [opened, synchronize, reopened, edited]
+  pull_request:
+    types: [opened, synchronize, reopened, edited]
   pull_request_target: # support target PR changes for labelling
     types: [opened, synchronize, reopened, edited]
 
