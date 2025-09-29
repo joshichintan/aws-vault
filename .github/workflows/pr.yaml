@@ -3,11 +3,13 @@ name: PR checks
 on:
   pull_request:
     types: [opened, synchronize, reopened, edited]
+  pull_request_target: # support target PR changes for labelling
+    types: [opened, synchronize, reopened, edited]
 
 permissions:
   contents: read  # This is required for the label PR action
   pull-requests: write # This is required for the label PR action
-  issues: write # Required to create new labels
+  #issues: write # Required to create new labels
 
 jobs:
   validate-pr-title:
@@ -35,5 +37,7 @@ jobs:
       - name: Label PRs
         id: label-prs
         uses: actions/labeler@v6
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          sync-labels: true
+          configuration-path: ".github/labeler.yaml"
