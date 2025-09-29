@@ -27,7 +27,6 @@ var keyringConfigDefaults = keyring.Config{
 	KeychainTrustApplication: true,
 	WinCredPrefix:            "aws-vault",
 	OPConnectTokenEnv:        "AWS_VAULT_OP_CONNECT_TOKEN",
-	OPConnectTokenFunc:       keyringPassphrasePrompt,
 	OPTokenEnv:               "AWS_VAULT_OP_SERVICE_ACCOUNT_TOKEN",
 	OPTokenFunc:              keyringPassphrasePrompt,
 }
