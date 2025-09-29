@@ -37,6 +37,7 @@ jobs:
       - name: Label PRs
         id: label-prs
         uses: actions/labeler@v6
-        repo-token: ${{ secrets.GITHUB_TOKEN }}
-        sync-labels: true
-        configuration-path: ".github/labeler.yaml"
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          sync-labels: true
+          configuration-path: ".github/labeler.yaml"
