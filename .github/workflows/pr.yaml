@@ -13,6 +13,8 @@ permissions:
 
 jobs:
   validate-pr-title:
+    # Run only when the PR comes from the same repository, not from a fork
+    if: github.event.pull_request.head.repo.full_name == github.repository
     name: Validate PR
     runs-on: ubuntu-latest
     steps:
@@ -31,6 +33,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           allowed-commit-types: "feat,fix,docs,chore,ci,test,refactor,perf,revert,changelog,build,style,merge"
   labeler:
+    # Run only when the PR comes from the same repository, not from a fork
+    if: github.event.pull_request.head.repo.full_name == github.repository
     name: Label PRs
     runs-on: ubuntu-latest
     steps:
