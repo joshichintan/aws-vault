@@ -272,6 +272,7 @@ WARNING: Use of this option runs against security best practices. It is recommen
 
 To configure the default flag values of `aws-vault` and its subcommands:
 * `AWS_VAULT_BACKEND`: Secret backend to use (see the flag `--backend`)
+* `AWS_VAULT_BIOMETRICS`: Use biometric authentication using TouchID, if supported (see the flag `--biometrics`)
 * `AWS_VAULT_KEYCHAIN_NAME`: Name of macOS keychain to use (see the flag `--keychain`)
 * `AWS_VAULT_AUTO_LOGOUT`: Enable auto-logout when doing `login` (see the flag `--auto-logout`)
 * `AWS_VAULT_PROMPT`: Prompt driver to use (see the flag `--prompt`)
@@ -718,6 +719,7 @@ In case of TOTP being out of sync (AWS API doesn't accept MFA codes), a yubikey 
 Note that each `[profile <name>]` in your `~/.aws/config` only supports one `mfa_serial` entry. If you wish to use multiple Yubikeys, or mix and match MFA devices, you'll need to add a profile for each method.
 
 ### Usage
+
 Using the `ykman` prompt driver, aws-vault will execute `ykman` to generate tokens for any profile in your `.aws/config` using an `mfa_device`.
 ```shell
 aws-vault exec --prompt ykman ${AWS_VAULT_PROFILE_USING_MFA} -- aws s3 ls
