@@ -34,7 +34,7 @@ jobs:
           allowed-commit-types: "feat,fix,docs,chore,ci,test,refactor,perf,revert,changelog,build,style,merge"
   labeler:
     # Run only when the PR comes from the same repository, not from a fork
-    if: github.event.pull_request.head.repo.full_name == github.repository
+    #if: github.event.pull_request.head.repo.full_name == github.repository
     name: Label PRs
     runs-on: ubuntu-latest
     steps:
