@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 	"time"
 
@@ -64,6 +65,7 @@ func ConfigureLoginCommand(app *kingpin.Application, a *AwsVault) {
 		BoolVar(&input.UseStdout)
 
 	cmd.Arg("profile", "Name of the profile. If none given, credentials will be sourced from env vars").
+		Default(os.Getenv("AWS_PROFILE")).
 		HintAction(a.MustGetProfileNames).
 		StringVar(&input.ProfileName)
 

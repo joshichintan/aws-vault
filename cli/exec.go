@@ -109,6 +109,7 @@ func ConfigureExecCommand(app *kingpin.Application, a *AwsVault) {
 
 	cmd.Arg("profile", "Name of the profile").
 		//Required().
+		Default(os.Getenv("AWS_PROFILE")).
 		HintAction(a.MustGetProfileNames).
 		StringVar(&input.ProfileName)
 
