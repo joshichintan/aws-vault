@@ -45,7 +45,9 @@ Use the `--backend` flag or `AWS_VAULT_BACKEND` environment variable to specify.
 # Store AWS credentials for the "jonsmith" profile
 $ aws-vault add jonsmith
 Enter Access Key Id: ABDCDEFDASDASF
-Enter Secret Key: %%%
+Enter Secret Key: ****************************************
+Enter MFA Device ARN (If MFA is not enabled, leave this blank): arn:aws:iam::123456789012:mfa/jonsmith
+Added credentials to profile "jonsmith" in vault
 
 # Execute a command (using temporary credentials)
 $ aws-vault exec jonsmith -- aws s3 ls
