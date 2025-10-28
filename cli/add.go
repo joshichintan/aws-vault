@@ -5,11 +5,11 @@ import (
 	"log"
 	"os"
 
-	"github.com/byteness/keyring"
-	"github.com/alecthomas/kingpin/v2"
-	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/byteness/aws-vault/v7/prompt"
 	"github.com/byteness/aws-vault/v7/vault"
+	"github.com/byteness/keyring"
+	"github.com/spf13/cobra"
+	"github.com/aws/aws-sdk-go-v2/aws"
 )
 
 type AddCommandInput struct {
@@ -18,39 +18,59 @@ type AddCommandInput struct {
 	AddConfig   bool
 }
 
-func ConfigureAddCommand(app *kingpin.Application, a *AwsVault) {
+func NewAddCommand(a *AwsVault) *cobra.Command {
 	input := AddCommandInput{}
 
-	cmd := app.Command("add", "Add credentials to the secure keystore.")
+	cmd := &cobra.Command{
+		Use:   "add [profile]",
+		Short: "Add credentials to the secure keystore",
+		Long:  "Add credentials to the secure keystore",
+		Args:  cobra.ExactArgs(1),
+		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+			if len(args) == 0 {
+				return a.CompleteProfileNames()(cmd, args, toComplete)
+			}
+			return nil, cobra.ShellCompDirectiveNoFileComp
+		},
+		RunE: func(cmd *cobra.Command, args []string) error {
+			input.ProfileName = args[0]
+			keyring, err := a.Keyring()
+			if err != nil {
+				return err
+			}
+			awsConfigFile, err := a.AwsConfigFile()
+			if err != nil {
+				return err
+			}
+			return AddCommand(input, keyring, awsConfigFile)
+		},
+	}
 
-	cmd.Arg("profile", "Name of the profile").
-		Required().
-		StringVar(&input.ProfileName)
-
-	cmd.Flag("env", "Read the credentials from the environment (AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY)").
-		BoolVar(&input.FromEnv)
-
-	cmd.Flag("add-config", "Add a profile to ~/.aws/config if one doesn't exist").
-		Default("true").
-		BoolVar(&input.AddConfig)
-
-	cmd.Action(func(c *kingpin.ParseContext) error {
-		keyring, err := a.Keyring()
-		if err != nil {
-			return err
+	// --env flag to read credentials from environment variables
+	cmd.Flags().BoolVar(&input.FromEnv, "env", false, "Read the credentials from the environment (AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY)")
+	
+	// --no-add-config flag to disable adding to config file (default is true)
+	// Note: We only need the --no- variant since default is true
+	input.AddConfig = true // Set default
+	var noAddConfig bool
+	cmd.Flags().BoolVar(&noAddConfig, "no-add-config", false, "Don't add a profile to ~/.aws/config")
+	
+	// Handle the negation flag
+	originalPreRun := cmd.PreRun
+	cmd.PreRun = func(c *cobra.Command, args []string) {
+		if noAddConfig {
+			input.AddConfig = false
 		}
-		awsConfigFile, err := a.AwsConfigFile()
-		if err != nil {
-			return err
+		if originalPreRun != nil {
+			originalPreRun(c, args)
 		}
-		err = AddCommand(input, keyring, awsConfigFile)
-		app.FatalIfError(err, "add")
-		return nil
-	})
+	}
+
+	return cmd
 }
 
 func AddCommand(input AddCommandInput, keyring keyring.Keyring, awsConfigFile *vault.ConfigFile) error {
-	var accessKeyID, secretKey, mfaSerial string
+	var accessKeyID, secretKey string
 
 	p, _ := awsConfigFile.ProfileSection(input.ProfileName)
 	if p.SourceProfile != "" {
@@ -73,9 +93,6 @@ func AddCommand(input AddCommandInput, keyring keyring.Keyring, awsConfigFile *v
 		if secretKey, err = prompt.TerminalSecretPrompt("Enter Secret Access Key: "); err != nil {
 			return err
 		}
-		if mfaSerial, err = prompt.TerminalPrompt("Enter MFA Device ARN (If MFA is not enabled, leave this blank): "); err != nil {
-			return err
-		}
 	}
 
 	creds := aws.Credentials{AccessKeyID: accessKeyID, SecretAccessKey: secretKey}
@@ -95,8 +112,7 @@ func AddCommand(input AddCommandInput, keyring keyring.Keyring, awsConfigFile *v
 	if _, hasProfile := awsConfigFile.ProfileSection(input.ProfileName); !hasProfile {
 		if input.AddConfig {
 			newProfileSection := vault.ProfileSection{
-				Name:      input.ProfileName,
-				MfaSerial: mfaSerial,
+				Name: input.ProfileName,
 			}
 			log.Printf("Adding profile %s to config at %s", input.ProfileName, awsConfigFile.Path)
 			if err := awsConfigFile.Add(newProfileSection); err != nil {

@@ -8,11 +8,11 @@ import (
 	"os"
 	"time"
 
-	"github.com/alecthomas/kingpin/v2"
-	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/byteness/aws-vault/v7/iso8601"
 	"github.com/byteness/aws-vault/v7/vault"
 	"github.com/byteness/keyring"
+	"github.com/spf13/cobra"
+	"github.com/aws/aws-sdk-go-v2/aws"
 	ini "gopkg.in/ini.v1"
 )
 
@@ -32,68 +32,70 @@ var (
 	FormatTypeExportINI  = "ini"
 )
 
-func ConfigureExportCommand(app *kingpin.Application, a *AwsVault) {
+func NewExportCommand(a *AwsVault) *cobra.Command {
 	input := ExportCommandInput{}
 
-	cmd := app.Command("export", "Export AWS credentials.")
+	cmd := &cobra.Command{
+		Use:   "export [profile]",
+		Short: "Export AWS credentials",
+		Long:  "Export AWS credentials",
+		Args:  cobra.ExactArgs(1),
+		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+			if len(args) == 0 {
+				return a.CompleteProfileNames()(cmd, args, toComplete)
+			}
+			return nil, cobra.ShellCompDirectiveNoFileComp
+		},
+		RunE: func(cmd *cobra.Command, args []string) error {
+			input.ProfileName = args[0]
+			
+			// Validate format
+			if input.Format != FormatTypeEnv && input.Format != FormatTypeExportEnv && 
+			   input.Format != FormatTypeExportJSON && input.Format != FormatTypeExportINI {
+				return fmt.Errorf("invalid format %s. Valid formats are: %s, %s, %s, %s", 
+					input.Format, FormatTypeEnv, FormatTypeExportEnv, FormatTypeExportJSON, FormatTypeExportINI)
+			}
+			
+			input.Config.MfaPromptMethod = a.PromptDriver(false)
+			input.Config.NonChainedGetSessionTokenDuration = input.SessionDuration
+			input.Config.AssumeRoleDuration = input.SessionDuration
+			input.Config.SSOUseStdout = input.UseStdout
 
-	cmd.Flag("duration", "Duration of the temporary or assume-role session. Defaults to 1h").
-		Short('d').
-		DurationVar(&input.SessionDuration)
-
-	cmd.Flag("no-session", "Skip creating STS session with GetSessionToken").
-		Short('n').
-		BoolVar(&input.NoSession)
-
-	cmd.Flag("region", "The AWS region").
-		StringVar(&input.Config.Region)
-
-	cmd.Flag("mfa-token", "The MFA token to use").
-		Short('t').
-		StringVar(&input.Config.MfaToken)
-
-	cmd.Flag("format", fmt.Sprintf("Format to output credentials. Valid formats: %s, %s, %s, %s", FormatTypeEnv, FormatTypeExportEnv, FormatTypeExportJSON, FormatTypeExportINI)).
-		Default(FormatTypeEnv).
-		EnumVar(&input.Format, FormatTypeEnv, FormatTypeExportEnv, FormatTypeExportJSON, FormatTypeExportINI)
-
-	cmd.Flag("stdout", "Print the SSO link to the terminal without automatically opening the browser").
-		BoolVar(&input.UseStdout)
-
-	cmd.Arg("profile", "Name of the profile").
-		//Required().
-		HintAction(a.MustGetProfileNames).
-		StringVar(&input.ProfileName)
-
-	cmd.Action(func(c *kingpin.ParseContext) (err error) {
-		input.Config.MfaPromptMethod = a.PromptDriver(false)
-		input.Config.NonChainedGetSessionTokenDuration = input.SessionDuration
-		input.Config.AssumeRoleDuration = input.SessionDuration
-		input.Config.SSOUseStdout = input.UseStdout
-
-		f, err := a.AwsConfigFile()
-		if err != nil {
-			return err
-		}
-		keyring, err := a.Keyring()
-		if err != nil {
-			return err
-		}
-
-		if input.ProfileName == "" {
-			// If no profile provided select from configured AWS profiles
-			ProfileName, err := pickAwsProfile(f.ProfileNames())
-
+			f, err := a.AwsConfigFile()
 			if err != nil {
-				return fmt.Errorf("unable to select a 'profile'. Try --help: %w", err)
+				return err
+			}
+			keyring, err := a.Keyring()
+			if err != nil {
+				return err
 			}
 
-			input.ProfileName = ProfileName
-		}
+			return ExportCommand(input, f, keyring)
+		},
+	}
 
-		err = ExportCommand(input, f, keyring)
-		app.FatalIfError(err, "exec")
-		return nil
+	cmd.Flags().DurationVarP(&input.SessionDuration, "duration", "d", time.Hour, "Duration of the temporary or assume-role session. Defaults to 1h")
+	cmd.Flags().BoolVarP(&input.NoSession, "no-session", "n", false, "Skip creating STS session with GetSessionToken")
+	cmd.Flags().StringVar(&input.Config.Region, "region", "", "The AWS region")
+	cmd.Flags().StringVarP(&input.Config.MfaToken, "mfa-token", "t", "", "The MFA token to use")
+	cmd.Flags().StringVar(&input.Format, "format", FormatTypeEnv, fmt.Sprintf("Format to output credentials. Valid formats: %s, %s, %s, %s", FormatTypeEnv, FormatTypeExportEnv, FormatTypeExportJSON, FormatTypeExportINI))
+	cmd.Flags().BoolVar(&input.UseStdout, "stdout", false, "Print the SSO link to the terminal without automatically opening the browser")
+
+	// Register flag completions - these trigger when completing flag values
+	cmd.RegisterFlagCompletionFunc("duration", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		return []string{"1h", "2h", "4h", "8h", "12h"}, cobra.ShellCompDirectiveNoFileComp
 	})
+	cmd.RegisterFlagCompletionFunc("region", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		return AwsRegions(), cobra.ShellCompDirectiveNoFileComp
+	})
+	cmd.RegisterFlagCompletionFunc("mfa-token", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		return []string{}, cobra.ShellCompDirectiveNoFileComp
+	})
+	cmd.RegisterFlagCompletionFunc("format", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		return []string{FormatTypeEnv, FormatTypeExportEnv, FormatTypeExportJSON, FormatTypeExportINI}, cobra.ShellCompDirectiveNoFileComp
+	})
+
+	return cmd
 }
 
 func ExportCommand(input ExportCommandInput, f *vault.ConfigFile, keyring keyring.Keyring) error {

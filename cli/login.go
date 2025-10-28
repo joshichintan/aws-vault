@@ -8,17 +8,16 @@ import (
 	"log"
 	"net/http"
 	"net/url"
-	"os"
 	"strings"
 	"time"
 
-	"github.com/alecthomas/kingpin/v2"
+	"github.com/byteness/aws-vault/v7/vault"
+	"github.com/byteness/keyring"
+	"github.com/spf13/cobra"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awsconfig "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
-	"github.com/byteness/aws-vault/v7/vault"
-	"github.com/byteness/keyring"
 	"github.com/skratchdot/open-golang/open"
 )
 
@@ -29,67 +28,68 @@ type LoginCommandInput struct {
 	Config          vault.ProfileConfig
 	SessionDuration time.Duration
 	NoSession       bool
-	AutoLogout      bool
 }
 
-func ConfigureLoginCommand(app *kingpin.Application, a *AwsVault) {
+func NewLoginCommand(a *AwsVault) *cobra.Command {
 	input := LoginCommandInput{}
 
-	cmd := app.Command("login", "Generate a login link for the AWS Console.")
+	cmd := &cobra.Command{
+		Use:   "login [profile]",
+		Short: "Generate a login link for the AWS Console",
+		Long:  "Generate a login link for the AWS Console",
+		Args:  cobra.MaximumNArgs(1),
+		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+			if len(args) == 0 {
+				return a.CompleteProfileNames()(cmd, args, toComplete)
+			}
+			return nil, cobra.ShellCompDirectiveNoFileComp
+		},
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) > 0 {
+				input.ProfileName = args[0]
+			}
+			input.Config.MfaPromptMethod = a.PromptDriver(false)
+			input.Config.NonChainedGetSessionTokenDuration = input.SessionDuration
+			input.Config.AssumeRoleDuration = input.SessionDuration
+			input.Config.GetFederationTokenDuration = input.SessionDuration
+			keyring, err := a.Keyring()
+			if err != nil {
+				return err
+			}
+			f, err := a.AwsConfigFile()
+			if err != nil {
+				return err
+			}
 
-	cmd.Flag("duration", "Duration of the assume-role or federated session. Defaults to 1h").
-		Short('d').
-		DurationVar(&input.SessionDuration)
+			return LoginCommand(context.Background(), input, f, keyring)
+		},
+	}
 
-	cmd.Flag("no-session", "Skip creating STS session with GetSessionToken").
-		Short('n').
-		BoolVar(&input.NoSession)
+	cmd.Flags().DurationVarP(&input.SessionDuration, "duration", "d", time.Hour, "Duration of the assume-role or federated session. Defaults to 1h")
+	cmd.Flags().BoolVarP(&input.NoSession, "no-session", "n", false, "Skip creating STS session with GetSessionToken")
+	cmd.Flags().StringVarP(&input.Config.MfaToken, "mfa-token", "t", "", "The MFA token to use")
+	cmd.Flags().StringVar(&input.Path, "path", "", "The AWS service you would like access")
+	cmd.Flags().StringVar(&input.Config.Region, "region", "", "The AWS region")
+	cmd.Flags().BoolVarP(&input.UseStdout, "stdout", "s", false, "Print login URL to stdout instead of opening in default browser")
 
-	cmd.Flag("auto-logout", "Auto logout when starting a new login").
-		Short('a').
-		Envar("AWS_VAULT_AUTO_LOGOUT").
-		BoolVar(&input.AutoLogout)
-
-	cmd.Flag("mfa-token", "The MFA token to use").
-		Short('t').
-		StringVar(&input.Config.MfaToken)
-
-	cmd.Flag("path", "The AWS service you would like access").
-		StringVar(&input.Path)
-
-	cmd.Flag("region", "The AWS region").
-		StringVar(&input.Config.Region)
-
-	cmd.Flag("stdout", "Print login URL to stdout instead of opening in default browser").
-		Short('s').
-		BoolVar(&input.UseStdout)
-
-	cmd.Arg("profile", "Name of the profile. If none given, credentials will be sourced from env vars").
-		Default(os.Getenv("AWS_PROFILE")).
-		HintAction(a.MustGetProfileNames).
-		StringVar(&input.ProfileName)
-
-	cmd.Action(func(c *kingpin.ParseContext) (err error) {
-		input.Config.MfaPromptMethod = a.PromptDriver(false)
-		input.Config.NonChainedGetSessionTokenDuration = input.SessionDuration
-		input.Config.AssumeRoleDuration = input.SessionDuration
-		input.Config.GetFederationTokenDuration = input.SessionDuration
-		keyring, err := a.Keyring()
-		if err != nil {
-			return err
-		}
-		f, err := a.AwsConfigFile()
-		if err != nil {
-			return err
-		}
-
-		err = LoginCommand(context.Background(), input, f, keyring)
-		app.FatalIfError(err, "login")
-		return nil
+	// Register flag completions - these trigger when completing flag values
+	cmd.RegisterFlagCompletionFunc("duration", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		return []string{"1h", "2h", "4h", "8h", "12h"}, cobra.ShellCompDirectiveNoFileComp
 	})
+	cmd.RegisterFlagCompletionFunc("region", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		return AwsRegions(), cobra.ShellCompDirectiveNoFileComp
+	})
+	cmd.RegisterFlagCompletionFunc("mfa-token", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		return []string{}, cobra.ShellCompDirectiveNoFileComp
+	})
+	cmd.RegisterFlagCompletionFunc("path", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		return []string{}, cobra.ShellCompDirectiveNoFileComp
+	})
+
+	return cmd
 }
 
-func getCredsProvider(input LoginCommandInput, config *vault.ProfileConfig, f *vault.ConfigFile, keyring keyring.Keyring) (credsProvider aws.CredentialsProvider, err error) {
+func getCredsProvider(input LoginCommandInput, config *vault.ProfileConfig, keyring keyring.Keyring) (credsProvider aws.CredentialsProvider, err error) {
 	if input.ProfileName == "" {
 		// When no profile is specified, source credentials from the environment
 		configFromEnv, err := awsconfig.NewEnvConfig()
@@ -98,32 +98,7 @@ func getCredsProvider(input LoginCommandInput, config *vault.ProfileConfig, f *v
 		}
 
 		if configFromEnv.Credentials.AccessKeyID == "" {
-			// If no credentials from the environment ask for profile
-			ProfileName, err := pickAwsProfile(f.ProfileNames())
-
-			if err != nil {
-				return nil, fmt.Errorf("unable to select a 'profile', nor any AWS env vars found. Try --help: %w", err)
-			}
-
-			// Load config from selected AWS profile
-			config, err := vault.NewConfigLoader(input.Config, f, ProfileName).GetProfileConfig(ProfileName)
-			if err != nil {
-				return nil, fmt.Errorf("Error loading config: %w", err)
-			}
-
-			// Use selected profile from the AWS config file
-			ckr := &vault.CredentialKeyring{Keyring: keyring}
-			t := vault.TempCredentialsCreator{
-				Keyring:                   ckr,
-				DisableSessions:           input.NoSession,
-				DisableSessionsForProfile: config.ProfileName,
-			}
-			credsProvider, err = t.GetProviderForProfile(config)
-			if err != nil {
-				return nil, fmt.Errorf("profile %s: %w", ProfileName, err)
-			}
-
-			return credsProvider, err
+			return nil, fmt.Errorf("argument 'profile' not provided, nor any AWS env vars found. Try --help")
 		}
 
 		credsProvider = credentials.StaticCredentialsProvider{Value: configFromEnv.Credentials}
@@ -152,7 +127,7 @@ func LoginCommand(ctx context.Context, input LoginCommandInput, f *vault.ConfigF
 		return fmt.Errorf("Error loading config: %w", err)
 	}
 
-	credsProvider, err := getCredsProvider(input, config, f, keyring)
+	credsProvider, err := getCredsProvider(input, config, keyring)
 	if err != nil {
 		return err
 	}
@@ -201,19 +176,8 @@ func LoginCommand(ctx context.Context, input LoginCommandInput, f *vault.ConfigF
 		return err
 	}
 
-	var loginURL string
-
-	if input.AutoLogout {
-		// Use logout URL and redirect to login
-		redirectURL := fmt.Sprintf("%s?Action=login&Issuer=aws-vault&Destination=%s&SigninToken=%s",
-			loginURLPrefix, destination, signinToken)
-		loginURL = fmt.Sprintf("https://us-east-1.signin.aws.amazon.com/oauth?Action=logout&redirect_uri=%s",
-			url.QueryEscape(redirectURL))
-	} else {
-		// Go directly to login
-		loginURL = fmt.Sprintf("%s?Action=login&Issuer=aws-vault&Destination=%s&SigninToken=%s",
-			loginURLPrefix, url.QueryEscape(destination), url.QueryEscape(signinToken))
-	}
+	loginURL := fmt.Sprintf("%s?Action=login&Issuer=aws-vault&Destination=%s&SigninToken=%s",
+		loginURLPrefix, url.QueryEscape(destination), url.QueryEscape(signinToken))
 
 	if input.UseStdout {
 		fmt.Println(loginURL)
@@ -225,7 +189,7 @@ func LoginCommand(ctx context.Context, input LoginCommandInput, f *vault.ConfigF
 }
 
 func generateLoginURL(region string, path string) (string, string) {
-	loginURLPrefix := "https://us-east-1.signin.aws.amazon.com/federation"
+	loginURLPrefix := "https://signin.aws.amazon.com/federation"
 	destination := "https://console.aws.amazon.com/"
 
 	if region != "" {
