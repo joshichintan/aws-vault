@@ -61,6 +61,7 @@ func ConfigureLoginCommand(app *kingpin.Application, a *AwsVault) {
 		StringVar(&input.Config.Region)
 
 	cmd.Flag("stdout", "Print login URL to stdout instead of opening in default browser").
+		OverrideDefaultFromEnvar("AWS_VAULT_STDOUT").
 		Short('s').
 		BoolVar(&input.UseStdout)
 
