@@ -211,8 +211,13 @@ func ConfigureGlobals(cmd *cobra.Command) *AwsVault {
 		a.UseBiometrics = true
 	}
 
+	// Set default backend if not set by environment variable
+	if a.KeyringBackend == "" {
+		a.KeyringBackend = backendsAvailable[0]
+	}
+
 	cmd.PersistentFlags().BoolVar(&a.Debug, "debug", false, "Show debugging output")
-	cmd.PersistentFlags().StringVar(&a.KeyringBackend, "backend", backendsAvailable[0], fmt.Sprintf("Secret backend to use %v", backendsAvailable))
+	cmd.PersistentFlags().StringVar(&a.KeyringBackend, "backend", a.KeyringBackend, fmt.Sprintf("Secret backend to use %v", backendsAvailable))
 	cmd.PersistentFlags().StringVar(&a.promptDriver, "prompt", "", fmt.Sprintf("Prompt driver to use %v", promptsAvailable))
 	cmd.PersistentFlags().StringVar(&a.KeyringConfig.KeychainName, "keychain", "aws-vault", "Name of macOS keychain to use, if it doesn't exist it will be created")
 	cmd.PersistentFlags().StringVar(&a.KeyringConfig.LibSecretCollectionName, "secret-service-collection", "awsvault", "Name of secret-service collection to use, if it doesn't exist it will be created")
