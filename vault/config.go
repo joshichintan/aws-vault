@@ -141,6 +141,7 @@ type ProfileSection struct {
 	WebIdentityTokenFile    string `ini:"web_identity_token_file,omitempty"`
 	WebIdentityTokenProcess string `ini:"web_identity_token_process,omitempty"`
 	STSRegionalEndpoints    string `ini:"sts_regional_endpoints,omitempty"`
+	EndpointURL             string `ini:"endpoint_url,omitempty"`
 	SessionTags             string `ini:"session_tags,omitempty"`
 	TransitiveSessionTags   string `ini:"transitive_session_tags,omitempty"`
 	SourceIdentity          string `ini:"source_identity,omitempty"`
@@ -381,6 +382,9 @@ func (cl *ConfigLoader) populateFromConfigFile(config *ProfileConfig, profileNam
 	if config.STSRegionalEndpoints == "" {
 		config.STSRegionalEndpoints = psection.STSRegionalEndpoints
 	}
+	if config.EndpointURL == "" {
+		config.EndpointURL = psection.EndpointURL
+	}
 	if config.SourceIdentity == "" {
 		config.SourceIdentity = psection.SourceIdentity
 	}
@@ -434,6 +438,11 @@ func (cl *ConfigLoader) populateFromEnv(profile *ProfileConfig) {
 	if stsRegionalEndpoints := os.Getenv("AWS_STS_REGIONAL_ENDPOINTS"); stsRegionalEndpoints != "" && profile.STSRegionalEndpoints == "" {
 		log.Printf("Using %q from AWS_STS_REGIONAL_ENDPOINTS", stsRegionalEndpoints)
 		profile.STSRegionalEndpoints = stsRegionalEndpoints
+	}
+
+	if endpointURL := os.Getenv("AWS_ENDPOINT_URL"); endpointURL != "" && profile.EndpointURL == "" {
+		log.Printf("Using %q from AWS_ENDPOINT_URL", endpointURL)
+		profile.EndpointURL = endpointURL
 	}
 
 	if mfaSerial := os.Getenv("AWS_MFA_SERIAL"); mfaSerial != "" && profile.MfaSerial == "" {
@@ -555,6 +564,9 @@ type ProfileConfig struct {
 
 	// STSRegionalEndpoints sets STS endpoint resolution logic, must be "regional" or "legacy"
 	STSRegionalEndpoints string
+
+	// EndpointURL specifies custom endpoint URL
+	EndpointURL string
 
 	// Mfa config
 	MfaSerial       string
