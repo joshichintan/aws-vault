@@ -12,7 +12,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/sso v1.30.13
 	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.35.17
 	github.com/aws/aws-sdk-go-v2/service/sts v1.41.9
-	github.com/byteness/keyring v1.8.3
+	github.com/byteness/keyring v1.9.0
 	github.com/charmbracelet/huh v1.0.0
 	github.com/charmbracelet/lipgloss v1.1.0
 	github.com/google/go-cmp v0.7.0
