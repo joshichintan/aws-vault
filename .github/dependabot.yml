@@ -28,7 +28,7 @@ updates:
       time: "11:00"
     # Group minor and patch updates
     groups:
-      go-dependencies:
+      github-actions-dependencies:
         patterns:
           - "*"
         update-types:
