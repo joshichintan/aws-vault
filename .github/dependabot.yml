@@ -5,7 +5,9 @@ version: 2
 updates:
   - package-ecosystem: "gomod" # See documentation for possible values
     open-pull-requests-limit: 10
-    directories: [ "/", "/contrib/_aws-vault-proxy/" ] # Locations of package manifests
+    directories: # Locations of package manifests
+      - "/"
+      - "/contrib/_aws-vault-proxy"
     schedule:
       interval: "weekly"
       day: "thursday"
