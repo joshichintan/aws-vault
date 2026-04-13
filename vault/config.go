@@ -114,7 +114,7 @@ func (c *ConfigFile) parseFile() error {
 		AllowNestedValues:    true,
 		InsensitiveSections:  false,
 		InsensitiveKeys:      true,
-		IgnoreInlineComment:  true,
+		SpaceBeforeInlineComment: true,
 	}, c.Path)
 	if err != nil {
 		return fmt.Errorf("Error parsing config file %s: %w", c.Path, err)
