@@ -35,7 +35,7 @@ func NewAwsConfig(region, stsRegionalEndpoints, endpointURL string) aws.Config {
 func NewAwsConfigWithCredsProvider(credsProvider aws.CredentialsProvider, region, stsRegionalEndpoints, endpointURL string) aws.Config {
 	return aws.Config{
 		Region:                      region,
-		Credentials:                 aws.NewCredentialsCache(credsProvider),
+		Credentials:                 credsProvider,
 		EndpointResolverWithOptions: getSTSEndpointResolver(stsRegionalEndpoints, endpointURL),
 	}
 }
@@ -179,36 +179,9 @@ func ssoTokenCacheKey(config *ProfileConfig) string {
 	return config.SSOStartURL
 }
 
-// NewStandardCachedSSOCredentialsProvider returns an ssocreds.Provider that reads the SSO
-// access token from the standard AWS CLI cache file (~/.aws/sso/cache/<sha1>.json).
-// Returns nil, nil if the standard token file does not exist.
-func NewStandardCachedSSOCredentialsProvider(config *ProfileConfig) (aws.CredentialsProvider, error) {
-	tokenFilepath, err := ssocreds.StandardCachedTokenFilepath(ssoTokenCacheKey(config))
-	if err != nil {
-		return nil, err
-	}
-
-	if _, err := os.Stat(tokenFilepath); os.IsNotExist(err) {
-		return nil, nil
-	}
-
-	cfg := NewAwsConfig(config.SSORegion, config.STSRegionalEndpoints, config.EndpointURL)
-
-	return ssocreds.New(
-		sso.NewFromConfig(cfg),
-		config.SSOAccountID,
-		config.SSORoleName,
-		config.SSOStartURL,
-		func(o *ssocreds.Options) {
-			o.CachedTokenFilepath = tokenFilepath
-		},
-	), nil
-}
-
 // SyncOIDCTokenToStandardCache writes the OIDC access token for the given profile
 // from the keyring to the standard AWS SSO cache file (~/.aws/sso/cache/<sha1>.json),
 // so that other AWS tools that read the standard file location can use it.
-// Returns nil without error if the standard cache file already exists.
 func SyncOIDCTokenToStandardCache(config *ProfileConfig, k keyring.Keyring) error {
 	tokenFilepath, err := ssocreds.StandardCachedTokenFilepath(ssoTokenCacheKey(config))
 	if err != nil {
@@ -220,6 +193,8 @@ func SyncOIDCTokenToStandardCache(config *ProfileConfig, k keyring.Keyring) erro
 		return fmt.Errorf("OIDC token not found in keyring for %s: %w", config.SSOStartURL, err)
 	}
 
+	// ExpiresIn is recalculated by OIDCTokenKeyring.Get() to reflect the
+	// remaining seconds until expiry, so time.Now().Add() is correct here.
 	expiration := time.Now().Add(time.Duration(token.ExpiresIn) * time.Second)
 
 	type cachedToken struct {

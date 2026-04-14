@@ -111,9 +111,11 @@ func (c *ConfigFile) parseFile() error {
 	log.Printf("Parsing config file %s", c.Path)
 
 	f, err := ini.LoadSources(ini.LoadOptions{
-		AllowNestedValues:    true,
-		InsensitiveSections:  false,
-		InsensitiveKeys:      true,
+		AllowNestedValues:   true,
+		InsensitiveSections: false,
+		InsensitiveKeys:     true,
+		// Require a space before '#' to treat it as an inline comment.
+		// Without this, '#' in values like sso_start_url is stripped.
 		SpaceBeforeInlineComment: true,
 	}, c.Path)
 	if err != nil {

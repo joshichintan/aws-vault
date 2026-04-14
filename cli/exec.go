@@ -110,6 +110,7 @@ func ConfigureExecCommand(app *kingpin.Application, a *AwsVault) {
 		BoolVar(&input.UseStdout)
 
 	cmd.Flag("profile-env", "Set AWS_PROFILE instead of injecting AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY").
+		OverrideDefaultFromEnvar("AWS_VAULT_PROFILE_ENV").
 		BoolVar(&input.UseProfileEnv)
 
 	cmd.Arg("profile", "Name of the profile").
@@ -225,8 +226,10 @@ func ExecCommand(input ExecCommandInput, f *vault.ConfigFile, keyring keyring.Ke
 		printHelpMessage(subshellHelp, input.ShowHelpMessages)
 	} else {
 		if input.UseProfileEnv {
+			// Validate credentials are accessible before setting AWS_PROFILE,
+			// so we fail fast rather than letting the child process fail silently.
 			if _, err = credsProvider.Retrieve(context.TODO()); err != nil {
-				return 0, fmt.Errorf("Failed to get credentials for %s: %w", input.ProfileName, err)
+				return 0, fmt.Errorf("failed to get credentials for %s: %w", input.ProfileName, err)
 			}
 			if config.HasSSOStartURL() {
 				if err = vault.SyncOIDCTokenToStandardCache(config, keyring); err != nil {
