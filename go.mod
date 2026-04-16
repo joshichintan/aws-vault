@@ -17,7 +17,7 @@ require (
 	github.com/charmbracelet/lipgloss v1.1.0
 	github.com/google/go-cmp v0.7.0
 	github.com/mattn/go-isatty v0.0.21
-	github.com/mattn/go-tty v0.0.7
+	github.com/mattn/go-tty v0.0.8
 	github.com/skratchdot/open-golang v0.0.0-20200116055534-eef842397966
 	golang.org/x/term v0.42.0
 	gopkg.in/ini.v1 v1.67.1
