@@ -2,6 +2,7 @@ package vault_test
 
 import (
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/byteness/aws-vault/v7/vault"
