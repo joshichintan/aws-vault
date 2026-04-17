@@ -114,6 +114,9 @@ func (c *ConfigFile) parseFile() error {
 		AllowNestedValues:   true,
 		InsensitiveSections: false,
 		InsensitiveKeys:     true,
+		// Require a space before '#' to treat it as an inline comment.
+		// Without this, '#' in values like sso_start_url is stripped.
+		SpaceBeforeInlineComment: true,
 	}, c.Path)
 	if err != nil {
 		return fmt.Errorf("Error parsing config file %s: %w", c.Path, err)

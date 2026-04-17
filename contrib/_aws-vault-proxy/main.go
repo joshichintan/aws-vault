@@ -32,7 +32,7 @@ func addAuthorizationHeader(authToken string, next http.Handler) http.HandlerFun
 // Send a http request to a running instance on localhost,
 // any valid http response is a successful healthcheck
 func checkRunning() {
-	client := &http.Client{ Timeout: 15 * time.Second }
+	client := &http.Client{Timeout: 15 * time.Second}
 
 	resp, err := client.Get("http://127.0.0.1/health")
 	if err != nil {

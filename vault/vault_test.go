@@ -4,9 +4,36 @@ import (
 	"os"
 	"testing"
 
-	"github.com/byteness/keyring"
 	"github.com/byteness/aws-vault/v7/vault"
+	"github.com/byteness/keyring"
 )
+
+func TestWriteFileAtomic_NoPartialOnCrash(t *testing.T) {
+	dir := t.TempDir()
+	target := filepath.Join(dir, "token.json")
+
+	// Seed with known-good content.
+	if err := os.WriteFile(target, []byte(`{"ok":true}`), 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	// Write new content atomically.
+	if err := writeFileAtomic(target, []byte(`{"ok":false,"new":true}`), 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	// No stray temp files left behind.
+	entries, _ := os.ReadDir(dir)
+	if len(entries) != 1 {
+		t.Fatalf("expected 1 file, got %d: %v", len(entries), entries)
+	}
+
+	// Perms are 0600.
+	info, _ := os.Stat(target)
+	if info.Mode().Perm() != 0600 {
+		t.Errorf("perm = %o, want 0600", info.Mode().Perm())
+	}
+}
 
 func TestUsageWebIdentityExample(t *testing.T) {
 	f := newConfigFile(t, []byte(`
