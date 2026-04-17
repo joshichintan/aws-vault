@@ -289,7 +289,7 @@ To configure the default flag values of `aws-vault` and its subcommands:
 * `AWS_VAULT_OP_CONNECT_TOKEN`: 1Password Connect server access token
 * `AWS_VAULT_OP_SERVICE_ACCOUNT_TOKEN`: 1Password service account token
 * `AWS_VAULT_OP_DESKTOP_ACCOUNT_ID`: 1Password Desktop App account name or account UUID (see the flag `--op-desktop-account-id`)
-* `AWS_VAULT_PROFILE_ENV`: Set `AWS_PROFILE` instead of injecting `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` (see the flag `profile-env`)
+* `AWS_VAULT_PROFILE_ENV`: Set `AWS_PROFILE` instead of injecting `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` to allow profile-based SDK auth (see the flag `profile-env` for `exec`)
 * `AWS_CONFIG_FILE`: The location of the AWS config file
 * `AWS_VAULT_STDOUT`: Print login URL to stdout instead of opening in default browser (see the flag `--stdout`)
 
