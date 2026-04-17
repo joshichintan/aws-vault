@@ -19,7 +19,7 @@ You can install AWS Vault:
 - by downloading the [latest release](https://github.com/byteness/aws-vault/releases/latest)
 - using [Homebrew](https://formulae.brew.sh/formula/aws-vault): `brew install aws-vault`
 - on Windows with [Chocolatey](https://chocolatey.org/packages/aws-vault): `choco install aws-vault` ([repo](https://github.com/gusztavvargadr/aws-vault-chocolatey) by [Gusztáv Varga](https://github.com/gusztavvargadr))
-- on [NixOS](https://search.nixos.org/packages?channel=unstable&query=aws-vault) (currently only available on the unstable channel): `nix-env -iA nixos.aws-vault`
+- on [NixOS](https://search.nixos.org/packages?channel=unstable&query=aws-vault): `nix-env -iA nixos.aws-vault`
 
 ## Documentation
 
