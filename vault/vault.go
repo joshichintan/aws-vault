@@ -216,11 +216,16 @@ func SyncOIDCTokenToStandardCache(config *ProfileConfig, k keyring.Keyring) erro
 		return err
 	}
 
-	if err := os.MkdirAll(filepath.Dir(tokenFilepath), 0700); err != nil {
-		return err
-	}
+	// MkdirAll only sets perms when creating the directory. If
+    // ~/.aws/sso/cache already exists with looser permissions (e.g. 0755
+    // from a prior AWS CLI run), we intentionally do not tighten them here
+    // — changing directory perms out from under another tool would be
+    // surprising. The token file itself is written 0600 below.
+    if err := os.MkdirAll(filepath.Dir(tokenFilepath), 0700); err != nil {
+    	return err
+    }
 
-	return os.WriteFile(tokenFilepath, b, 0600)
+    return writeFileAtomic(tokenFilepath, b, 0600)
 }
 
 // writeFileAtomic writes data to filename atomically by first writing to a
