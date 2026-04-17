@@ -19,7 +19,7 @@ func TestWriteFileAtomic_NoPartialOnCrash(t *testing.T) {
 	}
 
 	// Write new content atomically.
-	if err := writeFileAtomic(target, []byte(`{"ok":false,"new":true}`), 0600); err != nil {
+	if err := vault.WriteFileAtomic(target, []byte(`{"ok":false,"new":true}`), 0600); err != nil {
 		t.Fatal(err)
 	}
 
