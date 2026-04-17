@@ -6,6 +6,10 @@ on:
   pull_request_target: # support target PR changes for labelling
     types: [opened, synchronize, reopened, edited]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read  # This is required for the label PR action
   pull-requests: write # This is required for the label PR action
