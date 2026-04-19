@@ -156,7 +156,13 @@ func ConfigureGlobals(rootCmd *cobra.Command) *AwsVault {
 		readEnvDefault("AWS_VAULT_FILE_DIR", "~/.awsvault/keys/"),
 		"Directory for the \"file\" password store")
 
-	rootCmd.PersistentFlags().DurationVar(&a.KeyringConfig.OPTimeout, "op-timeout", 15*time.Second,
+	opTimeoutDefault := 15 * time.Second
+	if s := os.Getenv("AWS_VAULT_OP_TIMEOUT"); s != "" {
+		if d, err := time.ParseDuration(s); err == nil {
+			opTimeoutDefault = d
+		}
+	}
+	rootCmd.PersistentFlags().DurationVar(&a.KeyringConfig.OPTimeout, "op-timeout", opTimeoutDefault,
 		"Timeout for 1Password API operations (1Password Service Accounts only)")
 	rootCmd.PersistentFlags().StringVar(&a.KeyringConfig.OPVaultID, "op-vault-id",
 		os.Getenv("AWS_VAULT_OP_VAULT_ID"),
@@ -195,6 +201,17 @@ func ConfigureGlobals(rootCmd *cobra.Command) *AwsVault {
 		}
 
 		log.Printf("aws-vault %s", rootCmd.Version)
+
+		validBackend := false
+		for _, v := range backendsAvailable {
+			if v == a.KeyringBackend {
+				validBackend = true
+				break
+			}
+		}
+		if !validBackend {
+			return fmt.Errorf("--backend value must be one of %s, got '%s'", strings.Join(backendsAvailable, ","), a.KeyringBackend)
+		}
 
 		if a.promptDriver == "" {
 			return nil
