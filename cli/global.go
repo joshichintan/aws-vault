@@ -6,15 +6,16 @@ import (
 	"log"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/AlecAivazis/survey/v2"
-	"github.com/alecthomas/kingpin/v2"
 	"github.com/byteness/aws-vault/v7/prompt"
 	"github.com/byteness/aws-vault/v7/vault"
 	"github.com/byteness/keyring"
 	"github.com/charmbracelet/huh"
 	"github.com/charmbracelet/lipgloss"
 	isatty "github.com/mattn/go-isatty"
+	"github.com/spf13/cobra"
 	"golang.org/x/term"
 )
 
@@ -102,7 +103,22 @@ func (a *AwsVault) MustGetProfileNames() []string {
 	return config.ProfileNames()
 }
 
-func ConfigureGlobals(app *kingpin.Application) *AwsVault {
+// CompleteProfileNames returns a cobra completion function producing profile names.
+func (a *AwsVault) CompleteProfileNames() func(*cobra.Command, []string, string) ([]string, cobra.ShellCompDirective) {
+	return func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		return a.MustGetProfileNames(), cobra.ShellCompDirectiveNoFileComp
+	}
+}
+
+// readEnvDefault returns the env var value if set, otherwise fallback.
+func readEnvDefault(name, fallback string) string {
+	if v, ok := os.LookupEnv(name); ok {
+		return v
+	}
+	return fallback
+}
+
+func ConfigureGlobals(rootCmd *cobra.Command) *AwsVault {
 	a := &AwsVault{
 		KeyringConfig: keyringConfigDefaults,
 	}
@@ -114,94 +130,61 @@ func ConfigureGlobals(app *kingpin.Application) *AwsVault {
 
 	promptsAvailable := prompt.Available()
 
-	app.Flag("debug", "Show debugging output").
-		BoolVar(&a.Debug)
+	rootCmd.PersistentFlags().BoolVar(&a.Debug, "debug", false, "Show debugging output")
+	rootCmd.PersistentFlags().StringVar(&a.KeyringBackend, "backend",
+		readEnvDefault("AWS_VAULT_BACKEND", backendsAvailable[0]),
+		fmt.Sprintf("Secret backend to use %v", backendsAvailable))
+	rootCmd.PersistentFlags().StringVar(&a.promptDriver, "prompt",
+		os.Getenv("AWS_VAULT_PROMPT"),
+		fmt.Sprintf("Prompt driver to use %v", promptsAvailable))
+	rootCmd.PersistentFlags().StringVar(&a.KeyringConfig.KeychainName, "keychain",
+		readEnvDefault("AWS_VAULT_KEYCHAIN_NAME", "aws-vault"),
+		"Name of macOS keychain to use, if it doesn't exist it will be created")
+	rootCmd.PersistentFlags().StringVar(&a.KeyringConfig.LibSecretCollectionName, "secret-service-collection",
+		readEnvDefault("AWS_VAULT_SECRET_SERVICE_COLLECTION_NAME", "awsvault"),
+		"Name of secret-service collection to use, if it doesn't exist it will be created")
+	rootCmd.PersistentFlags().StringVar(&a.KeyringConfig.PassDir, "pass-dir",
+		os.Getenv("AWS_VAULT_PASS_PASSWORD_STORE_DIR"),
+		"Pass password store directory")
+	rootCmd.PersistentFlags().StringVar(&a.KeyringConfig.PassCmd, "pass-cmd",
+		os.Getenv("AWS_VAULT_PASS_CMD"),
+		"Name of the pass executable")
+	rootCmd.PersistentFlags().StringVar(&a.KeyringConfig.PassPrefix, "pass-prefix",
+		os.Getenv("AWS_VAULT_PASS_PREFIX"),
+		"Prefix to prepend to the item path stored in pass")
+	rootCmd.PersistentFlags().StringVar(&a.KeyringConfig.FileDir, "file-dir",
+		readEnvDefault("AWS_VAULT_FILE_DIR", "~/.awsvault/keys/"),
+		"Directory for the \"file\" password store")
 
-	app.Flag("backend", fmt.Sprintf("Secret backend to use %v", backendsAvailable)).
-		Default(backendsAvailable[0]).
-		Envar("AWS_VAULT_BACKEND").
-		EnumVar(&a.KeyringBackend, backendsAvailable...)
+	rootCmd.PersistentFlags().DurationVar(&a.KeyringConfig.OPTimeout, "op-timeout", 15*time.Second,
+		"Timeout for 1Password API operations (1Password Service Accounts only)")
+	rootCmd.PersistentFlags().StringVar(&a.KeyringConfig.OPVaultID, "op-vault-id",
+		os.Getenv("AWS_VAULT_OP_VAULT_ID"),
+		"UUID of the 1Password vault")
+	rootCmd.PersistentFlags().StringVar(&a.KeyringConfig.OPItemTitlePrefix, "op-item-title-prefix",
+		readEnvDefault("AWS_VAULT_OP_ITEM_TITLE_PREFIX", "aws-vault"),
+		"Prefix to prepend to 1Password item titles")
+	rootCmd.PersistentFlags().StringVar(&a.KeyringConfig.OPItemTag, "op-item-tag",
+		readEnvDefault("AWS_VAULT_OP_ITEM_TAG", "aws-vault"),
+		"Tag to apply to 1Password items")
+	rootCmd.PersistentFlags().StringVar(&a.KeyringConfig.OPConnectHost, "op-connect-host",
+		os.Getenv("AWS_VAULT_OP_CONNECT_HOST"),
+		"1Password Connect server HTTP(S) URI")
+	rootCmd.PersistentFlags().StringVar(&a.KeyringConfig.OPDesktopAccountID, "op-desktop-account-id",
+		os.Getenv("AWS_VAULT_OP_DESKTOP_ACCOUNT_ID"),
+		"1Password Desktop App account name or account UUID")
+	rootCmd.PersistentFlags().BoolVar(&a.UseBiometrics, "biometrics",
+		os.Getenv("AWS_VAULT_BIOMETRICS") == "true",
+		"Use biometric authentication if supported")
 
-	app.Flag("prompt", fmt.Sprintf("Prompt driver to use %v", promptsAvailable)).
-		Envar("AWS_VAULT_PROMPT").
-		StringVar(&a.promptDriver)
-
-	app.Validate(func(app *kingpin.Application) error {
-		if a.promptDriver == "" {
-			return nil
-		}
-		if a.promptDriver == "pass" {
-			kingpin.Fatalf("--prompt=pass (or AWS_VAULT_PROMPT=pass) has been removed from aws-vault as using TOTPs without " +
-				"a dedicated device goes against security best practices. If you wish to continue using pass, " +
-				"add `mfa_process = pass otp <your mfa_serial>` to profiles in your ~/.aws/config file.")
-		}
-		for _, v := range promptsAvailable {
-			if v == a.promptDriver {
-				return nil
-			}
-		}
-		return fmt.Errorf("--prompt value must be one of %s, got '%s'", strings.Join(promptsAvailable, ","), a.promptDriver)
+	_ = rootCmd.RegisterFlagCompletionFunc("backend", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		return backendsAvailable, cobra.ShellCompDirectiveNoFileComp
+	})
+	_ = rootCmd.RegisterFlagCompletionFunc("prompt", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		return promptsAvailable, cobra.ShellCompDirectiveNoFileComp
 	})
 
-	app.Flag("keychain", "Name of macOS keychain to use, if it doesn't exist it will be created").
-		Default("aws-vault").
-		Envar("AWS_VAULT_KEYCHAIN_NAME").
-		StringVar(&a.KeyringConfig.KeychainName)
-
-	app.Flag("secret-service-collection", "Name of secret-service collection to use, if it doesn't exist it will be created").
-		Default("awsvault").
-		Envar("AWS_VAULT_SECRET_SERVICE_COLLECTION_NAME").
-		StringVar(&a.KeyringConfig.LibSecretCollectionName)
-
-	app.Flag("pass-dir", "Pass password store directory").
-		Envar("AWS_VAULT_PASS_PASSWORD_STORE_DIR").
-		StringVar(&a.KeyringConfig.PassDir)
-
-	app.Flag("pass-cmd", "Name of the pass executable").
-		Envar("AWS_VAULT_PASS_CMD").
-		StringVar(&a.KeyringConfig.PassCmd)
-
-	app.Flag("pass-prefix", "Prefix to prepend to the item path stored in pass").
-		Envar("AWS_VAULT_PASS_PREFIX").
-		StringVar(&a.KeyringConfig.PassPrefix)
-
-	app.Flag("file-dir", "Directory for the \"file\" password store").
-		Default("~/.awsvault/keys/").
-		Envar("AWS_VAULT_FILE_DIR").
-		StringVar(&a.KeyringConfig.FileDir)
-
-	app.Flag("op-timeout", "Timeout for 1Password API operations (1Password Service Accounts only)").
-		Default("15s").
-		Envar("AWS_VAULT_OP_TIMEOUT").
-		DurationVar(&a.KeyringConfig.OPTimeout)
-
-	app.Flag("op-vault-id", "UUID of the 1Password vault").
-		Envar("AWS_VAULT_OP_VAULT_ID").
-		StringVar(&a.KeyringConfig.OPVaultID)
-
-	app.Flag("op-item-title-prefix", "Prefix to prepend to 1Password item titles").
-		Default("aws-vault").
-		Envar("AWS_VAULT_OP_ITEM_TITLE_PREFIX").
-		StringVar(&a.KeyringConfig.OPItemTitlePrefix)
-
-	app.Flag("op-item-tag", "Tag to apply to 1Password items").
-		Default("aws-vault").
-		Envar("AWS_VAULT_OP_ITEM_TAG").
-		StringVar(&a.KeyringConfig.OPItemTag)
-
-	app.Flag("op-connect-host", "1Password Connect server HTTP(S) URI").
-		Envar("AWS_VAULT_OP_CONNECT_HOST").
-		StringVar(&a.KeyringConfig.OPConnectHost)
-
-	app.Flag("op-desktop-account-id", "1Password Desktop App account name or account UUID").
-		Envar("AWS_VAULT_OP_DESKTOP_ACCOUNT_ID").
-		StringVar(&a.KeyringConfig.OPDesktopAccountID)
-
-	app.Flag("biometrics", "Use biometric authentication if supported").
-		Envar("AWS_VAULT_BIOMETRICS").
-		BoolVar(&a.UseBiometrics)
-
-	app.PreAction(func(c *kingpin.ParseContext) error {
+	rootCmd.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
 		if !a.Debug {
 			log.SetOutput(io.Discard)
 		}
@@ -211,9 +194,23 @@ func ConfigureGlobals(app *kingpin.Application) *AwsVault {
 			configureTouchID(&a.KeyringConfig)
 		}
 
-		log.Printf("aws-vault %s", app.Model().Version)
-		return nil
-	})
+		log.Printf("aws-vault %s", rootCmd.Version)
+
+		if a.promptDriver == "" {
+			return nil
+		}
+		if a.promptDriver == "pass" {
+			return fmt.Errorf("--prompt=pass (or AWS_VAULT_PROMPT=pass) has been removed from aws-vault as using TOTPs without " +
+				"a dedicated device goes against security best practices. If you wish to continue using pass, " +
+				"add `mfa_process = pass otp <your mfa_serial>` to profiles in your ~/.aws/config file.")
+		}
+		for _, v := range promptsAvailable {
+			if v == a.promptDriver {
+				return nil
+			}
+		}
+		return fmt.Errorf("--prompt value must be one of %s, got '%s'", strings.Join(promptsAvailable, ","), a.promptDriver)
+	}
 
 	return a
 }
@@ -246,29 +243,12 @@ func keyringPassphrasePrompt(prompt string) (string, error) {
 func pickAwsProfile(profiles []string) (string, error) {
 	var ProfileName string
 
-	// the questions to ask
 	prompt := &survey.Select{
 		Message: "Choose AWS profile:",
 		Options: profiles,
 	}
-	/*var countryQs = []*survey.Question{
-	      {
-	          Name: "profileName",
-	          Prompt: &survey.Select{
-	              Message: "Choose AWS profile:",
-	              Options: f.ProfileNames(),
-	          },
-	          Validate: survey.Required,
-	      },
-	  }
 
-	  answers := struct {
-	      ProfileName string
-	  }{}*/
-
-	// ask the question
 	err := survey.AskOne(prompt, &ProfileName)
-	//err := survey.Ask(countryQs, &answers)
 
 	return ProfileName, err
 }
@@ -277,7 +257,6 @@ func pickAwsProfile(profiles []string) (string, error) {
 func pickAwsProfile2(profiles []string) (string, error) {
 	var ProfileName string
 
-	// Convert to []huh.Option
 	var opts []huh.Option[string]
 	for _, p := range profiles {
 		opts = append(opts, huh.NewOption(p, p))
