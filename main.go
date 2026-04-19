@@ -24,6 +24,7 @@ func main() {
 
 	a := cli.ConfigureGlobals(rootCmd)
 	rootCmd.AddCommand(cli.ConfigureClearCommand(a))
+	rootCmd.AddCommand(cli.ConfigureListCommand(a))
 
 	// Subcommands will be registered as they are migrated (Tasks 4-11).
 
