@@ -28,6 +28,7 @@ func main() {
 	rootCmd.AddCommand(cli.ConfigureRemoveCommand(a))
 	rootCmd.AddCommand(cli.ConfigureAddCommand(a))
 	rootCmd.AddCommand(cli.ConfigureRotateCommand(a))
+	rootCmd.AddCommand(cli.ConfigureLoginCommand(a))
 
 	// Subcommands will be registered as they are migrated (Tasks 4-11).
 
