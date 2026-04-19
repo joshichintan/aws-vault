@@ -22,9 +22,10 @@ func main() {
 	rootCmd.Version = Version
 	rootCmd.SetVersionTemplate("{{.Version}}\n")
 
-	_ = cli.ConfigureGlobals(rootCmd)
+	a := cli.ConfigureGlobals(rootCmd)
+	rootCmd.AddCommand(cli.ConfigureClearCommand(a))
 
-	// Subcommands will be registered as they are migrated (Tasks 3-11).
+	// Subcommands will be registered as they are migrated (Tasks 4-11).
 
 	if err := rootCmd.Execute(); err != nil {
 		os.Exit(1)
