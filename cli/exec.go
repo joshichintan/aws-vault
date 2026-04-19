@@ -79,6 +79,13 @@ func ConfigureExecCommand(a *AwsVault) *cobra.Command {
 			if len(args) == 0 {
 				return a.CompleteProfileNames()(cmd, args, toComplete)
 			}
+			if len(args) == 1 {
+				// After the profile, suggest `--` so users can delegate to the
+				// wrapped command's own shell completion. The shipped zsh/bash/fish
+				// completion scripts in contrib/ intercept `--` and hand off to
+				// the real command's completion function.
+				return []string{"--"}, cobra.ShellCompDirectiveNoFileComp
+			}
 			return nil, cobra.ShellCompDirectiveNoFileComp
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {

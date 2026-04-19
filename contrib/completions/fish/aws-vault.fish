@@ -1,24 +1,34 @@
+# fish completion wrapper for aws-vault (cobra-based).
+#
+# Sources cobra's generated fish completion as the base, then layers on `--`
+# delegation so that after `aws-vault exec <profile> --` the completion is
+# handed off to the wrapped command's own completion via `complete -C`.
+#
+# Install:
+#   cp aws-vault.fish ~/.config/fish/completions/aws-vault.fish
+#
+# Without this wrapper, `aws-vault completion fish` gives you basic completion
+# up through the profile name but no delegation after `--`.
+
 if status --is-interactive
-  complete -ec aws-vault
+    # Load cobra's generated fish completion as the base layer.
+    if command -q aws-vault
+        aws-vault completion fish | source
+    end
 
-  # switch based on seeing a `--`
-  complete -c aws-vault -n 'not __fish_aws_vault_is_commandline' -xa '(__fish_aws_vault_complete_arg)'
-  complete -c aws-vault -n '__fish_aws_vault_is_commandline' -xa '(__fish_aws_vault_complete_commandline)'
+    # Layer a higher-priority `-x` completion that fires when `--` is on the
+    # command line. When it matches, delegate to the wrapped command.
+    complete -c aws-vault -n '__fish_aws_vault_saw_double_dash' -xa '(__fish_aws_vault_delegate)'
 
-  function __fish_aws_vault_is_commandline
-    string match -q -r '^--$' -- (commandline -opc)
-  end
+    function __fish_aws_vault_saw_double_dash
+        string match -q -r ' -- ' -- (commandline -pc)
+    end
 
-  function __fish_aws_vault_complete_arg
-    set -l parts (commandline -opc)
-    set -e parts[1]
-
-    aws-vault --completion-bash $parts
-  end
-
-  function __fish_aws_vault_complete_commandline
-    set -l parts (string split --max 1 '--' -- (commandline -pc))
-
-    complete "-C$parts[2]"
-  end
+    function __fish_aws_vault_delegate
+        # Split at the first `--`; delegate completion to the portion after it.
+        set -l parts (string split --max 1 ' -- ' -- (commandline -pc))
+        if test (count $parts) -ge 2
+            complete -C "$parts[2]"
+        end
+    end
 end
