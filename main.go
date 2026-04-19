@@ -31,8 +31,7 @@ func main() {
 	rootCmd.AddCommand(cli.ConfigureLoginCommand(a))
 	rootCmd.AddCommand(cli.ConfigureExportCommand(a))
 	rootCmd.AddCommand(cli.ConfigureProxyCommand())
-
-	// Subcommands will be registered as they are migrated (Tasks 4-11).
+	rootCmd.AddCommand(cli.ConfigureExecCommand(a))
 
 	if err := rootCmd.Execute(); err != nil {
 		os.Exit(1)
