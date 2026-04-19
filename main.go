@@ -15,6 +15,9 @@ func main() {
 		Use:   "aws-vault",
 		Short: "A vault for securely storing and accessing AWS credentials in development environments",
 		Long:  "A vault for securely storing and accessing AWS credentials in development environments.",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return cmd.Help()
+		},
 	}
 	rootCmd.Version = Version
 	rootCmd.SetVersionTemplate("{{.Version}}\n")
