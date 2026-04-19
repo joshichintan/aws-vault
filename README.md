@@ -158,31 +158,27 @@ This behavour can be achieved by using `--auto-logout` or `-a` flag! Read more i
 
 ## Shell completion
 
-aws-vault ships with two layers of completion support:
+`aws-vault completion <shell>` generates a completion script for `bash`, `zsh`, `fish`, or `powershell`. The bash/zsh/fish output includes **post-`--` delegation**: typing `aws-vault exec myprofile -- aws s3 <TAB>` hands completion off to `aws`'s own completion (or whatever tool you're wrapping).
 
-**Basic — built in (cobra auto-generated):**
-
-```shell
-aws-vault completion zsh        # or bash, fish, powershell
-```
-
-Install the output on your `$fpath` (zsh) / bash-completion dir / fish completions dir. This covers subcommands, flag values (backend, prompt, format), and profile-name suggestions for `aws-vault exec|login|clear|rotate|remove <TAB>`.
-
-**Full — wrapper scripts in `contrib/completions/`:**
+Install once:
 
 ```shell
-# zsh (oh-my-zsh)
-cp contrib/completions/zsh/aws-vault.zsh ~/.oh-my-zsh/completions/_aws-vault
-rm -f ~/.zcompdump
+# zsh: write the output to a location on your $fpath
+aws-vault completion zsh > "${fpath[1]}/_aws-vault"
 
-# bash (homebrew on macOS)
-cp contrib/completions/bash/aws-vault.bash "$(brew --prefix)/etc/bash_completion.d/aws-vault"
+# bash (macOS + homebrew)
+aws-vault completion bash > "$(brew --prefix)/etc/bash_completion.d/aws-vault"
 
 # fish
-cp contrib/completions/fish/aws-vault.fish ~/.config/fish/completions/aws-vault.fish
+aws-vault completion fish > ~/.config/fish/completions/aws-vault.fish
 ```
 
-The wrapper adds one capability the basic version can't provide: **post-`--` delegation**. When you type `aws-vault exec myprofile -- aws s3 <TAB>`, completion is handed off to `aws`'s own completion function (or `kubectl`, `terraform`, etc. — whatever you're wrapping).
+For the post-`--` delegation to actually complete the wrapped tool, that tool's own completer must be registered. For AWS CLI v2 on zsh:
+
+```shell
+autoload -Uz bashcompinit && bashcompinit
+complete -C aws_completer aws
+```
 
 ## Development
 
