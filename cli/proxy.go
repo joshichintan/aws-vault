@@ -5,32 +5,36 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/alecthomas/kingpin/v2"
 	"github.com/byteness/aws-vault/v7/server"
+	"github.com/spf13/cobra"
 )
 
-func ConfigureProxyCommand(app *kingpin.Application) {
+func ConfigureProxyCommand() *cobra.Command {
 	stop := false
 
-	cmd := app.Command("proxy", "Start a proxy for the ec2 instance role server locally.").
-		Alias("server").
-		Hidden()
+	cmd := &cobra.Command{
+		Use:     "proxy",
+		Aliases: []string{"server"},
+		Short:   "Start a proxy for the ec2 instance role server locally",
+		Long:    "Start a proxy for the ec2 instance role server locally.",
+		Hidden:  true,
+		Args:    cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if stop {
+				server.StopProxy()
+				return nil
+			}
+			handleSigTerm()
+			return server.StartProxy()
+		},
+	}
 
-	cmd.Flag("stop", "Stop the proxy").
-		BoolVar(&stop)
+	cmd.Flags().BoolVar(&stop, "stop", false, "Stop the proxy")
 
-	cmd.Action(func(*kingpin.ParseContext) error {
-		if stop {
-			server.StopProxy()
-			return nil
-		}
-		handleSigTerm()
-		return server.StartProxy()
-	})
+	return cmd
 }
 
 func handleSigTerm() {
-	// shutdown
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 	go func() {

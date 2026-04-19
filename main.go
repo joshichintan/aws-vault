@@ -30,6 +30,7 @@ func main() {
 	rootCmd.AddCommand(cli.ConfigureRotateCommand(a))
 	rootCmd.AddCommand(cli.ConfigureLoginCommand(a))
 	rootCmd.AddCommand(cli.ConfigureExportCommand(a))
+	rootCmd.AddCommand(cli.ConfigureProxyCommand())
 
 	// Subcommands will be registered as they are migrated (Tasks 4-11).
 
