@@ -190,20 +190,30 @@ If the flag is an enum, add validation in `rootCmd.PersistentPreRunE` following 
 
 ---
 
-## 6. Completion wrappers (shell-side)
+## 6. Completion with post-`--` delegation
 
-The shipped shell completion in `contrib/completions/{bash,fish,zsh}/` is a **wrapper** that:
+`aws-vault completion <shell>` (bash/zsh/fish) emits cobra's auto-generated script PLUS a shell-specific delegation wrapper. The wrapper lives in `main.go` as three string constants (`zshDelegationWrapper`, `bashDelegationWrapper`, `fishDelegationWrapper`) and is appended to cobra's output by our custom `completion` subcommand (we disable cobra's default via `rootCmd.CompletionOptions.DisableDefaultCmd = true`).
 
-- Sources cobra's auto-generated completion as the base.
-- Intercepts `--` on the command line and delegates to the wrapped command's completion (via `_command_offset`, `complete -C`, `_normal`).
+How it works at runtime:
 
-If you change anything in `ConfigureExecCommand`'s positional handling (args/flags after profile), verify the delegation still works:
+- **zsh**: we rename cobra's generated `_aws-vault` to `_aws-vault_cobra` via `eval "_aws-vault_cobra() ${functions[_aws-vault]}"`, then define a new `_aws-vault` that scans `$words` for `--` and calls zsh's `_normal` if found, else calls `_aws-vault_cobra`.
+- **bash**: we override cobra's `complete -F __start_aws-vault aws-vault` with `complete -F _aws-vault_delegate aws-vault`. `_aws-vault_delegate` scans `$COMP_WORDS` for `--` and calls `_command_offset $((i+1))` if found, else calls `__start_aws-vault`.
+- **fish**: we register a higher-priority `complete -c aws-vault -n '__aws_vault_has_double_dash'` that delegates via `complete -C`.
+
+If you change `ConfigureExecCommand`'s positional handling (args/flags after profile), verify:
 
 ```zsh
 aws-vault exec myprofile -- aws s3 <TAB>    # should show aws s3 subcommands
 ```
 
-The delegation requires the wrapped command to have its own shell completion registered (e.g. `complete -C aws_completer aws` for AWS CLI v2).
+The delegation only works when the wrapped command has its own completer registered. For AWS CLI v2:
+
+```zsh
+autoload -Uz bashcompinit && bashcompinit
+complete -C aws_completer aws
+```
+
+**If upstream (kingpin) changes any `exec` behavior**, re-test post-`--` behavior end-to-end — the wrapper assumes `exec` is the only command with positional args after a `--`. If a new subcommand also uses `--` passthrough, extend the wrapper scope accordingly.
 
 ---
 
