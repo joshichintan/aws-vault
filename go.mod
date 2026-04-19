@@ -4,7 +4,6 @@ go 1.25.0
 
 require (
 	github.com/AlecAivazis/survey/v2 v2.3.7
-	github.com/alecthomas/kingpin/v2 v2.4.0
 	github.com/aws/aws-sdk-go-v2 v1.41.5
 	github.com/aws/aws-sdk-go-v2/config v1.32.15
 	github.com/aws/aws-sdk-go-v2/credentials v1.19.14
@@ -19,6 +18,7 @@ require (
 	github.com/mattn/go-isatty v0.0.21
 	github.com/mattn/go-tty v0.0.8
 	github.com/skratchdot/open-golang v0.0.0-20200116055534-eef842397966
+	github.com/spf13/cobra v1.10.2
 	golang.org/x/term v0.42.0
 	gopkg.in/ini.v1 v1.67.1
 )
@@ -26,7 +26,6 @@ require (
 require (
 	github.com/1Password/connect-sdk-go v1.5.4-0.20250417152128-c154b387248b // indirect
 	github.com/1password/onepassword-sdk-go v0.4.1-beta.1 // indirect
-	github.com/alecthomas/units v0.0.0-20240927000941-0f3dac36c52b // indirect
 	github.com/atotto/clipboard v0.1.4 // indirect
 	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.18.21 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/configsources v1.4.21 // indirect
@@ -74,13 +73,11 @@ require (
 	github.com/opentracing/opentracing-go v1.2.0 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
-	github.com/spf13/cobra v1.10.2 // indirect
 	github.com/spf13/pflag v1.0.9 // indirect
 	github.com/tetratelabs/wabin v0.0.0-20230304001439-f6f874872834 // indirect
 	github.com/tetratelabs/wazero v1.11.0 // indirect
 	github.com/uber/jaeger-client-go v2.30.0+incompatible // indirect
 	github.com/uber/jaeger-lib v2.4.1+incompatible // indirect
-	github.com/xhit/go-str2duration/v2 v2.1.0 // indirect
 	github.com/xo/terminfo v0.0.0-20220910002029-abceb7e1c41e // indirect
 	go.opentelemetry.io/proto/otlp v1.9.0 // indirect
 	go.uber.org/atomic v1.11.0 // indirect
